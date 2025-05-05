@@ -1,0 +1,152 @@
+{% extends 'channel_viewer/base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    {% if not user.is_authenticated %}
+        <div class="bg-white p-6 rounded-lg shadow">
+            <p class="text-center text-gray-600">
+                Silakan <a href="{% url 'login' %}" class="text-blue-500 hover:underline">login</a> atau 
+                <a href="{% url 'signup' %}" class="text-blue-500 hover:underline">daftar</a> untuk mengelola whitelist.
+            </p>
+        </div>
+    {% else %}
+        <!-- Search Form -->
+        <div class="bg-white p-6 rounded-lg shadow">
+            <form method="post" id="content-form" class="space-y-4">
+                {% csrf_token %}
+                {{ form.selected_video_id }}
+                
+                <div class="space-y-2">
+                    <label for="video-search" class="block text-sm font-medium text-gray-700">
+                        Tambahkan ke Whitelist
+                    </label>
+                    <div class="relative">
+                        {{ form.input_content }}
+                        <div id="search-suggestions" class="absolute z-10 mt-1 w-full"></div>
+                    </div>
+                    <p class="text-xs text-gray-500">{{ form.input_content.help_text }}</p>
+                </div>
+                
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
+                    Tambahkan
+                </button>
+            </form>
+        </div>
+
+        <!-- Whitelisted Content -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Whitelisted Channels -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold mb-4">Channel Whitelisted</h2>
+                {% if whitelisted_channels %}
+                    <ul class="space-y-3">
+                        {% for channel in whitelisted_channels %}
+                            <li class="flex items-center space-x-3 p-3 hover:bg-gray-50 rounded">
+                                <span class="text-blue-500">@{{ channel.channel_name }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-gray-500">Belum ada channel yang di-whitelist</p>
+                {% endif %}
+            </div>
+
+            <!-- Whitelisted Videos -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-lg font-semibold mb-4">Video Whitelisted</h2>
+                {% if whitelisted_videos %}
+                    <div class="grid grid-cols-1 gap-4">
+                        {% for video in whitelisted_videos %}
+                            <div class="flex space-x-4 p-3 hover:bg-gray-50 rounded">
+                                <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}" 
+                                     class="w-24 h-16 object-cover rounded">
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium truncate">{{ video.title }}</p>
+                                    <p class="text-xs text-gray-500">{{ video.channel.channel_name }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-gray-500">Belum ada video yang di-whitelist</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('video-search');
+    const suggestionsContainer = document.getElementById('search-suggestions');
+    const selectedVideoField = document.getElementById('selected-video-id');
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function() {
+            const context = this, args = arguments;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func.apply(context, args);
+            }, wait);
+        };
+    }
+    
+    searchInput.addEventListener('input', debounce(function(e) {
+        const query = e.target.value.trim();
+        
+        if (query.startsWith('@') || query.length < 3) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+        
+        fetch(`/search/?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                suggestionsContainer.innerHTML = '';
+                
+                if (data.suggestions && data.suggestions.length > 0) {
+                    const suggestionList = document.createElement('div');
+                    suggestionList.className = 'bg-white border border-gray-200 rounded-md shadow-lg overflow-hidden';
+                    
+                    data.suggestions.forEach(video => {
+                        const item = document.createElement('button');
+                        item.type = 'button';
+                        item.className = 'w-full text-left p-3 hover:bg-gray-100 flex items-center space-x-3';
+                        item.innerHTML = `
+                            <img src="${video.thumbnail}" class="w-12 h-9 object-cover rounded">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium truncate">${video.title}</p>
+                                <p class="text-xs text-gray-500 truncate">${video.channel}</p>
+                            </div>
+                        `;
+                        
+                        item.addEventListener('click', function() {
+                            searchInput.value = video.title;
+                            selectedVideoField.value = video.video_id;
+                            suggestionsContainer.style.display = 'none';
+                        });
+                        
+                        suggestionList.appendChild(item);
+                    });
+                    
+                    suggestionsContainer.appendChild(suggestionList);
+                    suggestionsContainer.style.display = 'block';
+                } else {
+                    suggestionsContainer.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                suggestionsContainer.style.display = 'none';
+            });
+    }, 300));
+    
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}

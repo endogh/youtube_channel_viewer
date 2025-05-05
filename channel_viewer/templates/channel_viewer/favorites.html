@@ -1,0 +1,22 @@
+{% extends 'channel_viewer/base.html' %}
+
+{% block content %}
+<h1>Playlist Favorit Anda</h1>
+
+{% for playlist in playlists %}
+    <div class="playlist">
+        <h2>{{ playlist.name }}</h2>
+        <div class="video-container">
+            {% for video in playlist.videos.all %}
+                <div class="video">
+                    <a href="https://www.youtube.com/watch?v={{ video.video_id }}" target="_blank">
+                        <img src="{{ video.thumbnail_url }}" alt="{{ video.title }}">
+                        <h3>{{ video.title }}</h3>
+                    </a>
+                    <p>Channel: {{ video.channel.channel_name }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endfor %}
+{% endblock %}

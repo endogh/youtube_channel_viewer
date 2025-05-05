@@ -1,0 +1,13 @@
+{% extends 'channel_viewer/base.html' %}
+
+{% block content %}
+<h2>Login</h2>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Login</button>
+</form>
+
+<p>Belum punya akun? <a href="{% url 'signup' %}">Daftar disini</a></p>
+{% endblock %}
